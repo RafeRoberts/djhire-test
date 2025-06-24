@@ -227,7 +227,7 @@
   </q-dialog>
 </template>
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref } from 'vue'
 import { Notify} from 'quasar'
 import auth from '../auth'
 import { useAuthStore } from 'src/stores/auth'
