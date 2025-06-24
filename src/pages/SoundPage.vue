@@ -59,9 +59,8 @@
                   </div>
                   <div class="row items-start q-gutter-xs bg-secondary">
                     <q-card
-                      v-for="(item, index) in credentials"
-                      :key="item"
-                      :ref="el => { if (el) audioOptions[item] = el}"
+                      v-for="(item, index) in audioTracks"
+                      :key="index"
                       flat
                       bordered
                       dense
@@ -72,47 +71,40 @@
                         <q-img
                           src="~assets/penHeadphones.svg"
                           width="40px"
-                        />&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;{{ credentialsNames[index] }}
+                        />&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;{{ item.name }}
                       </q-card-section>
                       <q-card-section class="flex flex-start q-gutter-xs">
                         <div class="col-2 q-mr-xs">
                           <q-img
-                            :src="credentialsCovers[index]"
+                            :src="item.cover"
                             width="80px"
                           />
                         </div>
-                        <div
-                          class="row flex flex-start q-gutter-xs"
-                        >
+                        <div class="row flex flex-start q-gutter-xs">
                           <div class="col-10">
-                            <!-- <div
-                              id="waveform"
-                              ref="mywave"
-                            /> -->
                             <WaveSurferPlayer
-                              :ref="(el) => (mywave[index] = el)"
-                              :options="options"
-                              @ready="readyHandler($event, index)"
-                              @timeupdate="timeUpdateHandler($event, index)"
-                              @wave-surfer="readyWaveSurferHandler(ws, index)"
+                              :ref="(el) => (wavePlayers[index] = el)"
+                              :options="getWaveOptions(item.url)"
+                              @ready="(duration) => readyHandler(duration, index)"
+                              @timeupdate="(time) => timeUpdateHandler(time, index)"
+                              @wave-surfer="(ws) => readyWaveSurferHandler(ws, index)"
                             />
                           </div>
                           <div class="col-3">
-                            {{ currentTime }}
+                            {{ formatTime(currentTimes[index] || 0) }}
                           </div>
-                          <div
-                            class="col-4"
-                          >
+                          <div class="col-4">
                             <q-btn
-                              color="info"
+                              :color="isPlaying[index] ? 'negative' : 'info'"
                               flat
                               no-caps
                               size="24px"
-                              icon="play_circle"
+                              :icon="isPlaying[index] ? 'pause_circle' : 'play_circle'"
+                              @click="togglePlayPause(index)"
                             />
                           </div>
                           <div class="col-2 q-mr-lg">
-                            {{ totalDuration }}
+                            {{ formatTime(durations[index] || 0) }}
                           </div>
                         </div>
                       </q-card-section>
@@ -235,148 +227,186 @@
   </q-dialog>
 </template>
 <script setup>
-import { ref, useTemplateRef, reactive, computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { Notify} from 'quasar'
-//import { useVuelidate } from '@vuelidate/core'
-//import { required, email } from '@vuelidate/validators'
 import auth from '../auth'
 import { useAuthStore } from 'src/stores/auth'
-//import auth from 'src/auth'
-//import { useRouter } from 'vue-router'
-//import { useQuasar } from 'quasar'
-//import { useAuthStore } from 'src/stores/auth';
-//import { VueDOMPurifyHTML } from 'dompurify-html'
-//import DOMPurify   from 'dompurify'
-//import { defineComponent } from 'vue'
-//import { EventBus } from "../services/event-bus.js";
-//import WaveSurfer from "wavesurfer.js"
 import { WaveSurferPlayer } from '@meersagor/wavesurfer-vue'
+
 const authStore = useAuthStore()
-// const $q = useQuasar()
-// console.log('quasar =',$q)
 const audioDiag = ref(false)
-const mywave = ref([])
-const mywaves = useTemplateRef('mywave')
-//console.log('myWave =',mywave)
-// const mapErrors = {
-//   accept: 'Only image files please!',
-//   'max-file-size': 'File is too Large',
-//   'max-total-size': 'Files are too Large'
-//   //413: 'Payload Too Large'
-// }
- const credentials = ref([
-  'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/tracks/Groovy+Bots+in+the+Digital+Jungle.mp3',
-  'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg',
-  'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg'
- ])
- const credentialsCovers = ref([
-  'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg',
-  'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg',
-  'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg'
- ])
- const credentialsNames = ref([
-  'Track One',
-  'Track Two',
-  'Track Three'
- ])
-const options = computed(() => ({
-    height: 48,
-    width: 400,
-    waveColor: '#31CCEC',
-    progressColor: '#222222',
-    barGap: 2,
-    barWidth: 2,
-    barRadius: 8,
-    cursorWidth: 0,
-    url: credentials.value[0],
-}))
-const audioOptions = reactive({})
-const currentAudio = ref(0)
-console.log(currentAudio)
-const wavesurfer = ref(null)
-//const rightNow = Date.now()
-//const rightNowFormatted = date.formatDate(rightNow,'HH:mm:ss')
-//const currentTime = ref(rightNowFormatted)
-const currentTime = ref('00:00')
 
-const totalDuration = ref('00:00')
+// Audio tracks data structure
+const audioTracks = ref([
+  {
+    name: 'Groovy Bots in the Digital Jungle',
+    url: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/tracks/Groovy+Bots+in+the+Digital+Jungle.mp3',
+    cover: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg'
+  },
+  {
+    name: 'Track Two',
+    url: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg',
+    cover: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg'
+  },
+  {
+    name: 'Track Three',
+    url: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg',
+    cover: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg'
+  }
+])
 
-function formatTime (seconds) {
+// WaveSurfer instances and state
+const wavePlayers = ref([])
+const waveSurferInstances = ref([])
+const isPlaying = ref([])
+const currentTimes = ref([])
+const durations = ref([])
+
+// Initialize arrays for each track
+audioTracks.value.forEach((_, index) => {
+  isPlaying.value[index] = false
+  currentTimes.value[index] = 0
+  durations.value[index] = 0
+})
+
+// WaveSurfer options generator
+const getWaveOptions = (url) => ({
+  height: 48,
+  width: 400,
+  waveColor: '#31CCEC',
+  progressColor: '#222222',
+  barGap: 2,
+  barWidth: 2,
+  barRadius: 8,
+  cursorWidth: 0,
+  url: url,
+})
+
+// Format time helper
+function formatTime(seconds) {
+  if (!seconds || isNaN(seconds)) return '00:00'
   return [seconds / 60, seconds % 60]
     .map((v) => `0${Math.floor(v)}`.slice(-2))
-    .join(':');
+    .join(':')
 }
-async function readyHandler (duration, item) {
-  console.log('duration=',duration)
-  //console.log('index=',index)
-  console.log('mywaveReady1=',mywaves[item].value)
-  //totalDuration.value = formatTime(duration)
-}
-async function timeUpdateHandler (time) {
-          currentTime.value = formatTime(time)
-        }
-       //const { waveSurfer } = useWaveSurfer({mywave, options: options.value})
-async function readyWaveSurferHandler (mywaves, item) {
-          wavesurfer.value = mywaves[item];
-           console.log('mywaveReady=',mywaves[item].value)
- //console.log('mywave2=',mywave)
-        }
-//const { isPauseResume } =
-//const { waveSurfer } = useWaveSurfer({myWave, options: options.value})
 
-//const formatTime = (seconds) => [seconds / 60, seconds % 60].map((v) => `0${Math.floor(v)}`.slice(-2)).join(':')
+// Event handlers
+function readyHandler(duration, index) {
+  console.log(`Track ${index} ready, duration:`, duration)
+  durations.value[index] = duration
+}
+
+function timeUpdateHandler(time, index) {
+  currentTimes.value[index] = time
+}
+
+function readyWaveSurferHandler(waveSurfer, index) {
+  console.log(`WaveSurfer instance ${index} ready`)
+  waveSurferInstances.value[index] = waveSurfer
+  
+  // Listen for play/pause events
+  waveSurfer.on('play', () => {
+    isPlaying.value[index] = true
+    // Pause other tracks when one starts playing
+    pauseOtherTracks(index)
+  })
+  
+  waveSurfer.on('pause', () => {
+    isPlaying.value[index] = false
+  })
+  
+  waveSurfer.on('finish', () => {
+    isPlaying.value[index] = false
+  })
+}
+
+// Play/pause control
+function togglePlayPause(index) {
+  const waveSurfer = waveSurferInstances.value[index]
+  
+  if (!waveSurfer) {
+    console.warn(`WaveSurfer instance ${index} not ready`)
+    return
+  }
+  
+  if (isPlaying.value[index]) {
+    waveSurfer.pause()
+  } else {
+    // Pause other tracks first
+    pauseOtherTracks(index)
+    waveSurfer.play()
+  }
+}
+
+// Pause all other tracks except the specified index
+function pauseOtherTracks(excludeIndex) {
+  waveSurferInstances.value.forEach((waveSurfer, index) => {
+    if (index !== excludeIndex && waveSurfer && isPlaying.value[index]) {
+      waveSurfer.pause()
+    }
+  })
+}
+
+// Upload and management functions
 const credentials2 = ref({
-  UpdateField : "AudioArray",
-  UpdateValue : "test",
+  UpdateField: "AudioArray",
+  UpdateValue: "test",
   UpdateIndex: 0,
-  ProfileID : authStore.profileID,
-
+  ProfileID: authStore.profileID,
 })
-//const clean = DOMPurify.sanitize(dirty, {USE_PROFILES: {html: true}})
-//const rawHtml = DOMPurify.sanitize('<span style="color: red">This should be red.</span>')
-//const waveSurfer = ref(null)
-//if (!this.wavesurfer) this.createWaveSurfer();
-//createWaveSurfer()
-async function onDelete () {
-//   credentials.value.audio1 = ''
- }
-async function onStartAudioUpload (files) {
-  //console.log('options=',options)
-  //console.log('currentImg=',currentImg.value)
-  //console.log('count=',count.value)
+
+async function onDelete() {
+  // Implementation for deleting tracks
+  console.log('Delete track functionality')
+}
+
+async function onStartAudioUpload(files) {
   const file = files[0]
-  //resizedBlob.value = await fromBlob(file, 75, 'auto', 'auto', 'webp',)
-  //console.log(resizedBlob)
-  //console.log("files=", files)
   credentials2.value.Files = file
   credentials2.value.FileName = files[0].name
-  console.log("creds2=", credentials2)
-  const profileHeaderData = auth.updateAudioTrack(credentials2).then(data => {
-        console.log('s3=',data.data)
-        credentials2.value.UpdateValue = data.data
-        //credentials2.value.UpdateIndex = currentImg.value
-        console.log("creds3=", credentials2)
-        //const profileHeaderPhoto = auth.updateProfilePhoto(credentials2).then(data2 => {
-        //console.log(data2.data)
-        //credentials.value[currentImg.value] = data.data
-        //photoDiag.value = false
-        //cropImage.value = credentials.value[currentImg.value]
-        Notify.create({
-     // message: mapErrors[entry.failedPropValidation],
+  
+  console.log("Audio upload:", credentials2.value)
+  
+  try {
+    const profileHeaderData = await auth.updateAudioTrack(credentials2)
+    console.log('Upload successful:', profileHeaderData.data)
+    
+    Notify.create({
       message: 'File upload Successful',
       type: 'positive'
     })
-        // uploadId.value = data.data.uploadId
-        // uploadKey.value = data.data.key
-        // fullPath.value = data.data.path
-        })
-        //console.log(profileHeaderPhoto)
-        //console.log(data.data)
-      //})
-      console.log(profileHeaderData)
-      return { ok: true}
+    
+    return { ok: true }
+  } catch (error) {
+    console.error('Upload failed:', error)
+    Notify.create({
+      message: 'Upload failed',
+      type: 'negative'
+    })
+    return { ok: false }
+  }
 }
 
+function onRejected(rejectedEntries) {
+  rejectedEntries.forEach(entry => {
+    Notify.create({
+      message: `File rejected: ${entry.failedPropValidation}`,
+      type: 'negative'
+    })
+  })
+}
+
+function onUploaded(info) {
+  Notify.create({
+    message: 'File uploaded successfully',
+    type: 'positive'
+  })
+}
+
+function submitAudio() {
+  audioDiag.value = false
+  // Additional submit logic here
+}
 </script>
 <style>
 .controls {
