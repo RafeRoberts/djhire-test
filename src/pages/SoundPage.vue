@@ -227,7 +227,7 @@
   </q-dialog>
 </template>
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { Notify} from 'quasar'
 import auth from '../auth'
 import { useAuthStore } from 'src/stores/auth'
@@ -386,12 +386,12 @@ function onRejected(rejectedEntries) {
   })
 }
 
-function onUploaded(info) {
-  Notify.create({
-    message: 'File uploaded successfully',
-    type: 'positive'
-  })
-}
+// function onUploaded(info) {
+//   Notify.create({
+//     message: 'File uploaded successfully',
+//     type: 'positive'
+//   })
+// }
 
 function submitAudio() {
   audioDiag.value = false
