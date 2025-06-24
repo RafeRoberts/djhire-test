@@ -242,16 +242,6 @@ const audioTracks = ref([
     name: 'Groovy Bots in the Digital Jungle',
     url: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/tracks/Groovy+Bots+in+the+Digital+Jungle.mp3',
     cover: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg'
-  },
-  {
-    name: 'Track Two',
-    url: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg',
-    cover: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg'
-  },
-  {
-    name: 'Track Three',
-    url: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg',
-    cover: 'https://s3.ap-southeast-2.amazonaws.com/uploads.dev.djhire.com/avatar.jpg'
   }
 ])
 
