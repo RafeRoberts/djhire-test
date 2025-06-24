@@ -1,0 +1,20 @@
+// app global css in SCSS form
+@font-face {
+    font-family: customfont;
+    src: url(./fonts/CircularStd-Bold.woff);
+  }
+  
+  // declare a class which applies it
+  .my-fontb {
+    font-family: 'customfont';
+  }
+
+  @font-face {
+    font-family: customfont2;
+    src: url(./fonts/CircularStd-Book.woff);
+  }
+  
+  // declare a class which applies it
+  .my-font {
+    font-family: 'customfont2';
+  }
